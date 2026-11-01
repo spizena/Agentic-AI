@@ -1,0 +1,183 @@
+﻿generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id          String               @id @default(cuid())
+  email       String               @unique
+  name        String?
+  memberships BusinessMembership[]
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+}
+
+model Business {
+  id          String               @id @default(cuid())
+  name        String
+  memberships BusinessMembership[]
+  tasks       Task[]
+  leads       Lead[]
+  products    Product[]
+  quotations  Quotation[]
+  agentRuns   AgentRun[]
+  approvals   Approval[]
+  auditEvents AuditEvent[]
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+}
+
+model BusinessMembership {
+  id         String   @id @default(cuid())
+  userId     String
+  businessId String
+  role       String   @default("MEMBER")
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  @@unique([userId, businessId])
+  @@index([businessId])
+}
+
+model Task {
+  id          String   @id @default(cuid())
+  businessId  String
+  title       String
+  description String?
+  status      String   @default("PENDING")
+  dueAt       DateTime?
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  @@index([businessId, status])
+}
+
+model Reminder {
+  id         String   @id @default(cuid())
+  businessId String
+  title      String
+  remindAt   DateTime
+  status     String   @default("PENDING")
+  createdAt  DateTime @default(now())
+  @@index([businessId, remindAt])
+}
+
+model Lead {
+  id          String         @id @default(cuid())
+  businessId  String
+  name        String
+  email       String?
+  phone       String?
+  status      String         @default("NEW")
+  business    Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  activities  LeadActivity[]
+  createdAt   DateTime       @default(now())
+  @@index([businessId, status])
+}
+
+model LeadActivity {
+  id        String   @id @default(cuid())
+  businessId String
+  leadId    String
+  type      String
+  notes     String?
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  @@index([businessId, leadId])
+}
+
+model Product {
+  id         String   @id @default(cuid())
+  businessId String
+  name       String
+  sku        String?
+  price      Decimal  @db.Decimal(12, 2)
+  currency   String   @default("INR")
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  @@index([businessId])
+}
+
+model Quotation {
+  id         String   @id @default(cuid())
+  businessId String
+  quoteNumber String
+  status     String   @default("DRAFT")
+  total      Decimal  @db.Decimal(12, 2)
+  currency   String   @default("INR")
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  @@unique([businessId, quoteNumber])
+}
+
+model Conversation {
+  id         String    @id @default(cuid())
+  businessId String
+  title      String?
+  messages   Message[]
+  createdAt  DateTime  @default(now())
+  @@index([businessId])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  role           String
+  content        String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+  @@index([conversationId, createdAt])
+}
+
+model AgentRun {
+  id         String     @id @default(cuid())
+  businessId String
+  status     String     @default("PENDING")
+  input      Json?
+  output     Json?
+  toolCalls  ToolCall[]
+  business   Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt  DateTime   @default(now())
+  @@index([businessId, createdAt])
+}
+
+model ToolCall {
+  id         String   @id @default(cuid())
+  agentRunId String
+  toolName   String
+  input      Json?
+  output     Json?
+  status     String   @default("PENDING")
+  agentRun   AgentRun @relation(fields: [agentRunId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  @@index([agentRunId])
+}
+
+model Approval {
+  id         String   @id @default(cuid())
+  businessId String
+  action     String
+  payload    Json
+  status     String   @default("PENDING")
+  requestedBy String?
+  decidedBy  String?
+  decidedAt  DateTime?
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  @@index([businessId, status])
+}
+
+model AuditEvent {
+  id         String   @id @default(cuid())
+  businessId String
+  actorId    String?
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  @@index([businessId, createdAt])
+}
